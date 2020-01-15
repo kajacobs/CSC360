@@ -1,4 +1,9 @@
-/*
+/* Katherine Jacobs
+ * V00783178
+ * Last Modified: January 15th 2020
+ * CSC 360 A1
+ *
+ *
  * Partial Double linked-list implementation in C11
  * Course CSC 360, University of Vicoria (thank you Amir!)
  *
@@ -289,6 +294,52 @@ void swap(struct node* ref1, struct node* ref2) {
      * Nodes could be next to each other ref1 after ref2
      */
     /* Your code here */
+
+    if (ref1->next == ref2) {
+        struct node* px = prev(ref1);
+        struct node* nx = next(ref2);
+
+        if (px) px->next = ref2;
+        if (nx) nx->prev = ref1;
+
+        ref1->next = nx;
+        ref1->prev = ref2;
+
+        ref2->next = ref1;
+        ref2->prev = px;
+
+    } else if (ref1->prev == ref2) {
+        struct node* px = prev(ref2);
+        struct node* nx = next(ref1);
+
+        if (px) px->next = ref1;
+        if (nx) nx->prev = ref2;
+
+        ref2->next = nx;
+        ref2->prev = ref1;
+
+        ref1->next = ref2;
+        ref1->prev = px;
+
+    } else {
+        struct node* nx1 = next(ref1);
+        struct node* px1 = prev(ref1);
+
+        struct node* nx2 = next(ref2);
+        struct node* px2 = prev(ref2);
+
+        if (nx1) nx1->prev = ref2;
+        if (px1) px1->next = ref2;
+
+        if (nx2) nx2->prev = ref1;
+        if (px2) px2->next = ref1;
+
+        ref1->next = nx2;
+        ref1->prev = px2;
+
+        ref2->next = nx1;
+        ref2->prev = px1;
+    }
 }
 
 
@@ -324,6 +375,11 @@ void reverse(struct node* ref) {
  */
 struct node* concat(struct node* ref1, struct node* ref2) {
     /* Your code here */
+    struct node* head = begin(ref2);
+    struct node* tail = end(ref1);
+
+    head->prev = tail;
+    tail->next = head;
 
     return begin(ref1);
 }
@@ -338,7 +394,20 @@ struct node* concat(struct node* ref1, struct node* ref2) {
 int distance(struct node* ref1, struct node* ref2) {
 
     int dist = 0;
+    int count1 = 0;
+    int count2 = 0;
     /* Your code here */
+    while (ref1->prev) {
+        ref1 = prev(ref1);
+        count1++;
+    }
+
+    while (ref2->prev){
+        ref2 = prev(ref2);
+        count2++;
+    }
+
+    dist = (count2-count1);
 
     return dist;
 }
@@ -350,9 +419,17 @@ int distance(struct node* ref1, struct node* ref2) {
  */
 struct node* unique(struct node* ref) {
     struct node* head = begin(ref);
-    
+    struct node* temp = head;
+
     /* Your code here */
-    
+    while (temp->next){
+        struct node* nx = next(temp);
+        if (temp->data == nx->data){
+            erase(nx);
+        } else {
+            temp = next(temp);
+        }
+    }
     return head;
 }
 
@@ -366,9 +443,21 @@ struct node* unique(struct node* ref) {
  * \param n The number of positions to rotate
  * \return The head (begin) of the list
  */
+
+ /*
+ * My understanding is that this function rotates n nodes from the front of the
+ * list to the back.
+ */
 struct node* rotate_left(struct node* ref, int n) {
     struct node* head = begin(ref);
     /* Your code here */
+
+    for (int i = 0; i < n; i++){
+        struct node* tail = push_back(head, (head->data));
+        head = pop_front(tail);
+
+    }
+
     return head;
 }
 
@@ -378,9 +467,22 @@ struct node* rotate_left(struct node* ref, int n) {
  * \param n The number of positions to shift
  * \return
  */
+
+ /*
+ * My understanding of this function is that it removes n items from the font
+ * of the list, which looks like the list has been "shifted" to the left n times.
+ */
 struct node* shift_left(struct node* ref, int n) {
     /* Your code here */
-    return begin(ref);
+    struct node* tail = end(ref);
+
+    for (int i = 0; i < n; i++) {
+        if (tail) pop_front(tail);
+    }
+
+    if (tail) return begin(tail);
+
+    return tail;
 }
 
 /*!
@@ -391,6 +493,19 @@ struct node* shift_left(struct node* ref, int n) {
  */
 void minmax(struct node* ref, int* min, int* max) {
     /* Your code here */
+    struct node* head = begin(ref);
+    *min = head->data;
+    *max = head ->data;
+
+    while (head->next) {
+        if (head->data < *min){
+            *min = head->data;
+        }
+        if (head->data > *max){
+            *max = head->data;
+        }
+        head = next(head);
+    }
 }
 
 /*!
@@ -399,8 +514,36 @@ void minmax(struct node* ref, int* min, int* max) {
  * \param ref2
  * \return
  */
+
 bool includes(struct node* ref1, struct node* ref2) {
     /* Your code here */
+    int sz1 = size(ref1);
+    int sz2 = size(ref2);
+    int count = 0;
+
+    //copies of starting nodes
+    struct node* cr1;
+    struct node* cr2;
+
+    for (int i = 0; i < sz1; i++) {
+        count = 0;
+        cr1 = ref1;
+        cr2 = ref2;
+        for (int j = 0; j < sz2; j++) {
+            if (cr2->data == cr1->data){
+                cr2 = cr2->next;
+                cr1 = cr1->next;
+                count++;
+            } else {
+                break;
+            }
+
+            if (count == sz2){
+                return true;
+            }
+        }
+        ref1 = next(ref1);
+    }
 
     return false;
 }
@@ -424,6 +567,8 @@ void print(struct node* ref) {
 int main() {
 
     struct node* list = create(3);
+    int* min = (int*)malloc(sizeof(int));
+    int* max = (int*)malloc(sizeof(int));
 
     push_back(list, 4);
 
@@ -523,10 +668,14 @@ int main() {
     print(list3);
 
     printf("New list is included in the other one: %s\n", includes(begin(list), begin(list3)) ? "Yes" : "No");
+    minmax(list, min, max);
+    printf("Minimum: %d, Maximum: %d \n", *min, *max);
 
     printf("Free up the memory!\n");
     clear(list);
     clear(list3);
+    free(min);
+    free(max);
 
     return 0;
 }
