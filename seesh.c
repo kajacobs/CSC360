@@ -55,6 +55,10 @@ int main(int argc, char **argv){
             printf("\n");
             execute_command(init_args);
         }
+    free(line);
+    free(read);
+    free(len);
+    free(init_args);
 
     }
     //get input loop
