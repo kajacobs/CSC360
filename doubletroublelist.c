@@ -567,8 +567,8 @@ void print(struct node* ref) {
 int main() {
 
     struct node* list = create(3);
-    int* min = (int*)malloc(sizeof(int));
-    int* max = (int*)malloc(sizeof(int));
+    //int* min = (int*)malloc(sizeof(int));
+    //int* max = (int*)malloc(sizeof(int));
 
     push_back(list, 4);
 
@@ -668,14 +668,14 @@ int main() {
     print(list3);
 
     printf("New list is included in the other one: %s\n", includes(begin(list), begin(list3)) ? "Yes" : "No");
-    minmax(list, min, max);
-    printf("Minimum: %d, Maximum: %d \n", *min, *max);
+//    minmax(list, min, max);
+//    printf("Minimum: %d, Maximum: %d \n", *min, *max);
 
     printf("Free up the memory!\n");
     clear(list);
     clear(list3);
-    free(min);
-    free(max);
+//    free(min);
+//    free(max);
 
     return 0;
 }
