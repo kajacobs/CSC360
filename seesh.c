@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <signal.h>
+#include<sys/wait.h>
 
 #define BUFSIZE 64
 #define DELIM "\t\r\n\a "
@@ -35,26 +36,27 @@ int main(int argc, char **argv){
     size_t len = 0;
     ssize_t read;
     char **init_args;
-    int init_status;
 
     char *rcloc = strcat(getenv("HOME"), "/.SEEshrc\0");
     rcfile = fopen(rcloc, "r");
 
     if (rcfile == NULL){
-        exit(0);
+        printf("No RC File found\n");
     }
     //read rc file line by line
-    while ((read = getline(&line, &len, rcfile)) != -1){
-        init_args = split_line(line);
+    if (rcfile != NULL){
+        while ((read = getline(&line, &len, rcfile)) != -1){
+            init_args = split_line(line);
 
-        //Print line from rc file
-        for (int i = 0; init_args[i] != NULL; i++){
-            printf("%s ", init_args[i]);
+            //Print line from rc file
+            for (int i = 0; init_args[i] != NULL; i++){
+                printf("%s ", init_args[i]);
+            }
+            printf("\n");
+            execute_command(init_args);
         }
-        printf("\n");
-        init_status = execute_command(init_args);
-    }
 
+    }
     //get input loop
     main_loop();
 } // end of main()
@@ -133,9 +135,11 @@ char **split_line(char* line){
 */
 int execute_command(char **args){
     if (args == NULL){
-        fprintf(stderr, "Error: NULL arguments");
+        fprintf(stderr, "Error: NULL arguments\n");
+        return 1;
     } else if (args[0] == NULL) {
-        fprintf(stderr, "Error: NULL arguments");
+        fprintf(stderr, "Error: NULL arguments\n");
+        return 1;
     }
 
     size_t cmd_len = strlen(args[0]);
