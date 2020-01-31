@@ -55,7 +55,6 @@ int main(int argc, char **argv){
             printf("\n");
             execute_command(init_args);
             free(line);
-        //    for(int i=0; init_args[i]!=NULL; i++) free(init_args[i]);
             free(init_args);
         }
     fclose(rcfile);
@@ -77,7 +76,6 @@ void main_loop(){
         status = execute_command(args);
 
         free(line);
-        //for(int i=0; args[i]!=NULL; i++) free(args[i]);
         free(args);
     } while (status);
 } // end of main_loop()
@@ -85,7 +83,6 @@ void main_loop(){
 
 /*
  *seesh_read_line() reads input from user at command line
- * See README: function from tutorial
 */
 char *get_input(void){
     char *line = NULL;
