@@ -77,7 +77,7 @@ void main_loop(){
         status = execute_command(args);
 
         free(line);
-        for(int i=0; args[i]!=NULL; i++) free(args[i]);
+        //for(int i=0; args[i]!=NULL; i++) free(args[i]);
         free(args);
     } while (status);
 } // end of main_loop()
