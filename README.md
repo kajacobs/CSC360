@@ -16,5 +16,5 @@ The following are some of the other websites I read to help implement parts of m
 - https://linux.die.net/man/3/getline - used for implementing reading in the rc file
 - https://www.geeksforgeeks.org/signals-c-language/ - used for implementing a handler to catch ctrl-C
 
-- A bug that I want to make you aware of is if the child process returns -1  at line 158 (passing an invalid argument) it then takes 2 ctrl-D's to exit SEEsh regardless of
+  A bug that I want to make you aware of is if the child process returns -1  at line 158 (passing an invalid argument) it then takes 2 ctrl-D's to exit SEEsh regardless of
 how many other commands the shell is given. It does terminate after 2 though.
