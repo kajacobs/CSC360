@@ -78,6 +78,7 @@ void main_loop(){
         free(line);
         free(args);
     } while (status);
+    free(args);
 } // end of main_loop()
 
 
