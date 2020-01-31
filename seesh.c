@@ -57,7 +57,8 @@ int main(int argc, char **argv){
         }
     fclose(rcfile);
     free(line);
-
+    for(int i=0; init_args[i]!=NULL; i++) free(init_args[i]);
+    free(init_args);
     }
     //get input loop
     main_loop();
@@ -76,9 +77,9 @@ void main_loop(){
         status = execute_command(args);
 
         free(line);
+        for(int i=0; args[i]!=NULL; i++) free(args[i]);
         free(args);
     } while (status);
-    free(args);
 } // end of main_loop()
 
 
