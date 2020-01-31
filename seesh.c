@@ -55,7 +55,7 @@ int main(int argc, char **argv){
             printf("\n");
             execute_command(init_args);
             free(line);
-            for(int i=0; init_args[i]!=NULL; i++) free(init_args[i]);
+        //    for(int i=0; init_args[i]!=NULL; i++) free(init_args[i]);
             free(init_args);
         }
     fclose(rcfile);
