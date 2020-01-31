@@ -93,6 +93,7 @@ char *get_input(void){
     int val = getline(&line, &bufsize, stdin);
     if (val == -1){
         printf("Goodbye!\n");
+        free(line);
         exit(0);
     }
     return line;
