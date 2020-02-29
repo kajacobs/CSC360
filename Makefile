@@ -1,9 +1,10 @@
-CC=gcc
-CFLAGS=-Wall -Werror
+CC := gcc
+CFLAGS := -g -Wall -Wno-deprecated-declarations -Werror
 
-SEEsh: seesh.o
-	$(CC) -o SEEsh seesh.o
-
+all: worm
 
 clean:
-	- rm *.o SEEsh
+	rm -rf worm worm.dSYM
+
+worm: worm.c util.c util.h scheduler.c scheduler.h
+	$(CC) $(CFLAGS) -o worm worm.c util.c scheduler.c -lncurses
