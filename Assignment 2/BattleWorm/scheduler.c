@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <curses.h>
 #include <ucontext.h>
+#include <time.h>
 
 #include "util.h"
 
@@ -15,25 +16,42 @@
 // This is the size of each task's stack memory
 #define STACK_SIZE 65536
 
+// States
+#define SLEEP 0
+#define WAIT 1
+#define READ 2
+#define RUNNING 3
+#define READY 4
+#define FINISHED 5
+
 // This struct will hold the all the necessary information for each task
 typedef struct task_info {
   // This field stores all the state required to switch back to this task
   ucontext_t context;
   
+  int status; //status of current task
+  int sleep_until; // time for sleep in ms
+  int task_wait; // task that the current task is waiting on
+  //int characters; // number of characters
+
   // This field stores another context. This one is only used when the task
   // is exiting.
   ucontext_t exit_context;
   
-  // TODO: Add fields here so you can:
-  //   a. Keep track of this task's state.
-  //   b. If the task is sleeping, when should it wake up?
-  //   c. If the task is waiting for another task, which task is it waiting for?
-  //   d. Was the task blocked waiting for user input? Once you successfully
-  //      read input, you will need to save it here so it can be returned.
+  /**
+   * TODO: Add fields here so you can:
+   * a. Keep track of this task's state.
+   * b. If the task is sleeping, when should it wake up?
+   * c. If the task is waiting for another task, which task is it waiting for?
+   * d. Was the task blocked waiting for user input? Once you successfully
+   *   read input, you will need to save it here so it can be returned.
+  */
 } task_info_t;
 
+int previous_task = 0;
 int current_task = 0; //< The handle of the currently-executing task
 int num_tasks = 1;    //< The number of tasks created so far
+int started_switching = 0; // Have we done our first context switch?
 task_info_t tasks[MAX_TASKS]; //< Information for every task
 
 /**
@@ -41,9 +59,47 @@ task_info_t tasks[MAX_TASKS]; //< Information for every task
  * functiosn in this file.
  */
 void scheduler_init() {
-  // TODO: Initialize the state of the scheduler 
+  ucontext_t mainContext;
+  getcontext(&mainContext);
+  ucontext_t mainExitContext;
+  getcontext(&mainExitContext);
+  task_info_t mainTask = { mainContext, 3, 0, 0, mainExitContext };
+  tasks[0] = mainTask;
+  
 }
 
+int get_time_ms(){
+  return (int)((double)clock())/((double)CLOCKS_PER_SEC)*1000;
+}
+
+void findnexttask() {
+  while(true) {
+    current_task = (current_task + 1) % num_tasks;
+    if (tasks[current_task].status == READY) return;
+    if (tasks[current_task].status == FINISHED) continue;
+    switch (tasks[current_task].status) {
+      case WAIT :
+        if (tasks[tasks[current_task].task_wait].status == FINISHED) {
+          return;
+        }
+        break;
+      case SLEEP :
+        if (tasks[current_task].sleep_until <= get_time_ms()){
+          return;
+        } else {
+          break;
+        }
+      case READ :
+        break;
+    } // end of switch
+  } // end of while
+}
+
+void scheduler() {
+  previous_task = current_task; // we're in between tasks
+  findnexttask();
+  swapcontext(&tasks[previous_task].context, &tasks[current_task].context);
+}
 
 /**
  * This function will execute when a task's function returns. This allows you
@@ -51,7 +107,10 @@ void scheduler_init() {
  * because of how the contexts are set up in the task_create function.
  */
 void task_exit() {
+
   // TODO: Handle the end of a task's execution here
+  tasks[current_task].status = FINISHED;
+  scheduler();
 }
 
 /**
@@ -67,8 +126,9 @@ void task_create(task_t* handle, task_fn_t fn) {
   
   // Set the task handle to this index, since task_t is just an int
   *handle = index;
- 
-  // We're going to make two contexts: one to run the task, and one that runs at the end of the task so we can clean up. Start with the second
+  tasks[index].status = READY;
+  // We're going to make two contexts: one to run the task, and one that
+  // runs at the end of the task so we can clean up. Start with the second
   
   // First, duplicate the current context as a starting point
   getcontext(&tasks[index].exit_context);
@@ -102,6 +162,17 @@ void task_create(task_t* handle, task_fn_t fn) {
  */
 void task_wait(task_t handle) {
   // TODO: Block this task until the specified task has exited.
+  if (started_switching == 0) {
+    started_switching = 1;
+    getcontext(&tasks[0].context);
+    tasks[0].status = WAIT;
+    tasks[0].task_wait = handle;
+    scheduler();
+  } else {
+    tasks[current_task].task_wait = handle;
+    scheduler();
+    return;
+  }
 }
 
 /**
@@ -114,6 +185,18 @@ void task_wait(task_t handle) {
 void task_sleep(size_t ms) {
   // TODO: Block this task until the requested time has elapsed.
   // Hint: Record the time the task should wake up instead of the time left for it to sleep. The bookkeeping is easier this way.
+  if (started_switching == 0) {
+    started_switching = 1;
+    getcontext(&tasks[0].context);
+    tasks[0].status = SLEEP;
+    tasks[0].sleep_until = ms + get_time_ms();
+    scheduler();
+  } else {
+    tasks[current_task].status = SLEEP;
+    tasks[current_task].sleep_until = ms + get_time_ms();
+    scheduler();
+  }
+
 }
 
 /**
@@ -127,5 +210,13 @@ int task_readchar() {
   // TODO: Block this task until there is input available.
   // To check for input, call getch(). If it returns ERR, no input was available.
   // Otherwise, getch() will returns the character code that was read.
+  if (started_switching == 0) {
+    started_switching = 1;
+   // getcontext(&tasks[0].context);
+    //tasks[0].status = READ;
+    //tasks[0].characters = 0;
+    //scheduler();
+    // create main context
+  }
   return ERR;
 }
