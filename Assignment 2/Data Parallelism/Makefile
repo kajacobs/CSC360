@@ -1,7 +1,7 @@
 CC=gcc
 
 dataPar: dataPar.o
-	$(CC) -o dataPar dataPar.o
+	$(CC) -pthread -o dataPar dataPar.o
 
 
 clean:
