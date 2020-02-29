@@ -3,4 +3,4 @@ make
 cd tests
 make clean
 make
-./test2
+./test4

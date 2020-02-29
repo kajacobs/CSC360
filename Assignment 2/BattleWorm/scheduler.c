@@ -32,7 +32,6 @@ typedef struct task_info {
   int status; //status of current task
   int sleep_until; // time for sleep in ms
   int task_wait; // task that the current task is waiting on
-  //int characters; // number of characters
 
   // This field stores another context. This one is only used when the task
   // is exiting.
@@ -53,6 +52,7 @@ int current_task = 0; //< The handle of the currently-executing task
 int num_tasks = 1;    //< The number of tasks created so far
 int started_switching = 0; // Have we done our first context switch?
 task_info_t tasks[MAX_TASKS]; //< Information for every task
+int inpt;
 
 /**
  * Initialize the scheduler. Programs should call this before calling any other
@@ -90,7 +90,12 @@ void findnexttask() {
           break;
         }
       case READ :
-        break;
+        inpt = getch();
+        if (inpt == ERR){
+          break;
+        } else {
+          return;
+        }
     } // end of switch
   } // end of while
 }
@@ -212,11 +217,11 @@ int task_readchar() {
   // Otherwise, getch() will returns the character code that was read.
   if (started_switching == 0) {
     started_switching = 1;
-   // getcontext(&tasks[0].context);
-    //tasks[0].status = READ;
-    //tasks[0].characters = 0;
-    //scheduler();
-    // create main context
+    getcontext(&tasks[0].context);
+    tasks[0].status = READ;
+  } else {
+    tasks[current_task].status = READ;
   }
-  return ERR;
+  scheduler();
+  return inpt;
 }
