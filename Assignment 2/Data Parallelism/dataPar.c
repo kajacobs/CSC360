@@ -6,21 +6,28 @@
 #include <math.h>
 
 #define MAXLINELEN 100
+#define MAX_SIZE
 
 void* mathtime(void* data_points);
 
-int** error_values;
-float* data_points;
+float data_points[5000];
+int numbers[5000];
+pthread_mutex_t mutex;
+int size = 0;
+int lowest_i = 0;
+int lowest_j = 0;
+float lowest_value = 0;
+float lowest_slope = 0;
 
 int main(int argc, char *argv[]){
-    
+
+    // Opening File and creating array of data points
     char* token;
-    float* data_points = (float*)malloc(0);
-    int size = 0;
     char* line;
     size_t len;
     ssize_t read;
-    float parsed_number;
+    double parsed_number;
+    int x = 0;
 
     FILE* fp = fopen(argv[1], "r");
     if (fp != NULL){
@@ -30,75 +37,64 @@ int main(int argc, char *argv[]){
             token = strtok(NULL, ",");
             parsed_number = atof(token);
             size++;
-            data_points = (float*)realloc((void*)data_points, size*sizeof(float));
-            data_points[size-1] = (float)parsed_number;
+            data_points[x] = (float)parsed_number;
+            x++;
         }
     } else {
         printf("read failure\n");
         return 1;
     }
+    if (argv[2] != NULL){
+        size = atoi(argv[2]);
+    }
     fclose(fp);
 
-    /*
-    pthread_t pthread_id[size];
-
-    for (int i = 0; i < size; i++){
-        pthread_create(&pthread_id[i], NULL, mathtime, &data_points);
-    }
-
-    for(int i = 0; i < size; i++){
-        pthread_join(pthread_id[i], NULL);
-    }
-    */
-    double slope;
-    double intercept;
-    double error;
-    int lowest_i = 0;
-    int lowest_j = 0;
-    float lowest_value = 0;
-    float lowest_slope = 0;
 
     clock_t t;
     t = clock();
-    for(int i = 0; i < size; i++){
-        for(int j= i+1; j < size; j++){
-            // calculate slope and intercept
-            slope = (data_points[j]-data_points[i])/(j-i);
-            intercept = data_points[i] - (i/(j-i))*(data_points[j]-data_points[i]);
-            error = 0;
-            for (int k=0; k<size; k++) {
-                error += fabs(data_points[k] - slope*(double)k-intercept);
-            }
-            if  (lowest_value == 0 || error < lowest_value) {
+    
+    pthread_t pthread_id[6000];
+    pthread_mutex_init(&mutex, NULL);
+    for (int m = 0; m < size; m++){
+        numbers[m] = m;
+        pthread_create(&pthread_id[m], NULL, mathtime, &numbers[m]);
+    }
+    
+    for(int n = 0; n < size; n++){
+        pthread_join(pthread_id[n], NULL);
+    }
+    
+    printf("The minimum sum using %d points.\n", size);
+    printf("Lowest error is %f at points %d and %d, with slope %f.\n",lowest_value, lowest_i, lowest_j, lowest_slope);
+
+    // calculating total time taken.
+    t = clock() - t;
+    double time_taken = ((double)t)/CLOCKS_PER_SEC; // in seconds 
+    printf("Took %f seconds to complete calculation.\n", time_taken);   
+}
+
+void* mathtime(void* number){
+    int* i = number;
+    float slope;
+    float intercept;
+    float error;
+
+    for(int j = (*i)+1; j < size; j++){
+        error = 0;
+        // calculate slope and intercept       
+        slope = (data_points[j]-data_points[*i])/((float)j-(float)(*i));
+        intercept = data_points[*i] - ((float)(*i)/(float)(j-(*i)))*(data_points[j]-data_points[*i]);
+        for (int k=0; k<size; k++) {
+            error += fabs(data_points[k] - slope*(double)k-intercept);
+        }
+        pthread_mutex_lock(&mutex);
+        if  (lowest_value == 0 || error < lowest_value) {
                 lowest_value = error;
-                lowest_i = i;
+                lowest_i = *i;
                 lowest_j = j;
                 lowest_slope = slope;
             }
-        }
-    }
-
-    /*
-    int myerror = 0;
-    for (int i = 0; i < size; i++){
-        for (int j = 0, j < size; j++){
-            if (error_values[i][j] < myerror) {
-                myerror = error_values[i][j];
-            }
-        }
-    }
-    */
-    printf("The minimum sum using %d points.\n", size);
-    printf("Lowest error is %f at points %d and %d, with slope %f.\n",lowest_value, lowest_i, lowest_j, lowest_slope);
-   t = clock() - t;
-
-    double time_taken = ((double)t)/CLOCKS_PER_SEC; // in seconds 
-  
-    printf("Took %f seconds to complete calculation.\n", time_taken); 
-    
-}
-
-void* mathtime(void* data_points){
-
+        pthread_mutex_unlock(&mutex);
+    }   
     return NULL;
 }
