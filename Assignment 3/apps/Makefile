@@ -1,5 +1,5 @@
 SOURCES =../io/file.c
-PROGRAMS =test format
+PROGRAMS =test format testlists testdir
 DEBUG =-DDEBUG
 CFLAGS =-Wall -g -std=c99
 LIBS =-I.
