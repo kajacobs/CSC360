@@ -26,6 +26,16 @@ int main(){
     printf("block #: %d\n", block);
     print(blocklist_head);
 
+    printf("-----------------------------\n");
+    printf("Testing closeLLFS.\n");
+    closeLLFS();
+    printf("BlockList: \n");
+    print(blocklist_head);
+    printf("Inode List: \n");
+    print(inodelist_head);
+    
+
+
 
 
     return 1;

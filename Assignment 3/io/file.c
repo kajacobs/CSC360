@@ -28,11 +28,13 @@ int getValue(struct node* ref);
 void push_back(struct node** listHead, int newElem);
 int pop_front(struct node** listHead);
 void erase(struct node* ref);
+void clear(struct node** listHead);
 void print(struct node** listHead);
 
 // FS Functions 
 void initLLFS();
 void startLLFS();
+void closeLLFS();
 byte* init_freeblocks();
 byte* init_inodes();
 void create_free_blocklist();
@@ -41,13 +43,17 @@ void set_block(byte* block, int block_num);
 void unset_block(byte* block, int block_num);
 int get_block(byte* block, int block_num);
 int create_directory();
-void add_file_to_directory(int parent_node_num, int child_node_num, char* filename);
+void add_file_to_directory(int parent_inode_num, int child_node_num, char* filename);
+int delete_file_from_directory(int parent_inode_num, char* filename);
+int create_file();
+void delete_file(int inode_num);
+void reclaim_block(int block_num);
+void reclaim_inode(int inode_num);
 
 // To DO (back end)
+void closeLLFS();
 void delete_directory();
-void addto_directory();
-void create_file();
-void delete_file();
+void add_to_file();
 void write_inode();
 void write_block();
 // add ref to directory
@@ -118,6 +124,10 @@ void push_back(struct node** listHead, int newElem) {
 int pop_front(struct node** listHead) {
     struct node* ref = *listHead;
     int value = -1;
+    if (ref == NULL){
+        return value;
+    }
+
     ref = begin(ref);
     if (next(ref) == NULL) {
         value = getValue(ref);
@@ -144,6 +154,13 @@ void erase(struct node* ref) {
 
     if(px) {
         px->next = nx;
+    }
+}
+
+void  clear(struct node** listHead) {
+    int value = pop_front(listHead);
+    while (value != -1){
+        value = pop_front(listHead);
     }
 }
 
@@ -205,6 +222,15 @@ void initLLFS(){
 void startLLFS(){
     create_free_blocklist();
     create_free_inodelist();
+}
+
+// free's up memory from the free block and free inode lists.
+void closeLLFS(){
+    clear(blocklist_head);
+    clear(inodelist_head);
+
+    free(blocklist_head);
+    free(inodelist_head);
 }
 
 /*-------------------Init Free block and inode bit vectors-----------------------*/
@@ -269,7 +295,7 @@ void create_free_inodelist(){
     }
 }
 
-/* -------------------------Bit vector functions --------------------------------*/
+/* -------------------------Bit vector functions ---------------------------------*/
 // sets block value to 1 in bit vector
 void set_block(byte* block, int block_num){
     int index = block_num / 8;
@@ -295,7 +321,7 @@ int get_block(byte* block, int block_num){
     return bit;
 }
 
-/* --------------------------------------------------------------------------------*/
+/* --------------------------Directory Functions------------------------------------*/
 
 int create_directory(){
     int block_num = pop_front(blocklist_head);
@@ -307,8 +333,8 @@ int create_directory(){
     inode[3] = 32;
     //set flag to be directory
     inode[4] = 0xDD;
-    inode[8] = block_num / 256;
-    inode[9] = block_num % 256;
+    inode[9] = block_num & 0xFF;
+    inode[8] = (block_num >> 8) & 0xFF;
 
     writeBlock((inode_num+2), inode);
 
@@ -321,7 +347,6 @@ int create_directory(){
     // Create reference Block
     byte* block = (byte*)calloc(BLOCK_SIZE, sizeof(byte));
     block[0] = inode_num;
-    printf("Inode number = %d\n", inode_num);
     strncpy((char*)(block + 1),".", 1);
     writeBlock(block_num, block);
     free(block);
@@ -338,13 +363,12 @@ int create_directory(){
 // adds given file to directory
 // Used resource below for calculating int to hex for file size
 // https://stackoverflow.com/questions/3784263/converting-an-int-into-a-4-byte-char-array-c
-void add_file_to_directory(int parent_node_num, int child_node_num, char* filename){
+void add_file_to_directory(int parent_inode_num, int child_node_num, char* filename){
     //get parent inode block
     byte* parent_inode = (byte*)calloc(BLOCK_SIZE, sizeof(byte));
-    readBlock((parent_node_num + 2), parent_inode);
+    readBlock((parent_inode_num + 2), parent_inode);
 
     int parent_block_num = ((int)parent_inode[8])*256 + (int)parent_inode[9];
-    printf("Parent block number is: %d\n", parent_block_num);
 
     //get parent block
     byte* parent_block = (byte*)calloc(BLOCK_SIZE, sizeof(byte));
@@ -353,26 +377,222 @@ void add_file_to_directory(int parent_node_num, int child_node_num, char* filena
     // add file to directory
     for (int i = 0; i < BLOCK_SIZE; i += 32){
         if (parent_block[i] == 0x00){
-            printf("We doing the thing now.\n");
             parent_block[i] = child_node_num;
             strncpy((char*)(parent_block + (i+1)), filename, strlen(filename));
             break;
-        } else {
-            printf("Checking next spot.\n");
         }
     }
 
     int dir_size = ((int)parent_inode[3]) + 256*((int)parent_inode[2]) + 256*256*((int)parent_inode[1]);
     dir_size += 32;
-    printf("DIR SIZE HUR DUR: %d\n", dir_size);
     parent_inode[3] = dir_size & 0xFF;
     parent_inode[2] = (dir_size >> 8) & 0xFF;
     parent_inode[1] = (dir_size >> 16) & 0xFF;
     parent_inode[0] = (dir_size >> 24) & 0xFF; 
 
     writeBlock(parent_block_num, parent_block);
-    writeBlock((parent_node_num + 2), parent_inode);
+    writeBlock((parent_inode_num + 2), parent_inode);
     free(parent_block);
     free(parent_inode);
 
 }
+
+int delete_file_from_directory(int parent_inode_num, char* filename) {
+    byte* parent_inode = (byte*)calloc(BLOCK_SIZE, sizeof(byte));
+    readBlock((parent_inode_num + 2), parent_inode);
+
+    int filname_len = strlen(filename);
+    int file_inode_num = 0;
+
+    // The i and j that lead to the reference of the file to be removed
+    int persistent_i = 0;
+    int persistent_j = 0;
+
+
+    byte* block = (byte*)calloc(BLOCK_SIZE, sizeof(byte));
+    // Loop through each non-empty reference block # in the inode for filename
+    for (int i = 8; i < BLOCK_SIZE; i += 2) {
+        int blocknum = (int)parent_inode[i]*256 + (int)parent_inode[i+1];
+        if (blocknum != 0){
+            readBlock(blocknum, block);
+            // Loop through each block to find filename
+            for (int j = 1; j < BLOCK_SIZE; j += 32){
+                if (strncmp(filename, (char*)block + j, filname_len) == 0){
+                    file_inode_num = block[j-1];
+                    persistent_j = j-1;
+                    persistent_i = i;
+                }
+            }
+        }
+    }
+    
+    if (file_inode_num == 0){
+        return -1;
+    }
+
+    byte* file_inode = (byte*)calloc(BLOCK_SIZE, sizeof(byte));
+
+    readBlock((file_inode_num + 2), file_inode);
+    if (file_inode[4] == 0xFF){
+        delete_file(file_inode_num);
+    } else if (file_inode[4] == 0xDD){
+         printf("8\n");
+        int size = ((int)file_inode[3]) + 256*((int)file_inode[2]) + 256*256*((int)file_inode[1]);
+        if (size != 32){
+            printf("Directory is not empty, cannot be deleted.\n");
+        } else {
+            delete_file(file_inode_num);
+        }
+    }
+
+    // remove reference from parent directory
+    int parent_block_num = (int)parent_inode[persistent_i]*256 + (int)parent_inode[persistent_i+1];
+    readBlock(parent_block_num, block);
+    byte* blankline = (byte*)calloc(32, sizeof(byte));
+    memcpy(block+persistent_j, blankline, 32);
+    free(blankline);
+    writeBlock(parent_block_num, block);
+
+    // update parent directory size
+    int dir_size = ((int)parent_inode[3]) + 256*((int)parent_inode[2]) + 256*256*((int)parent_inode[1]);
+    dir_size -= 32;
+    parent_inode[3] = dir_size & 0xFF;
+    parent_inode[2] = (dir_size >> 8) & 0xFF;
+    parent_inode[1] = (dir_size >> 16) & 0xFF;
+
+    writeBlock((parent_inode_num + 2), parent_inode);
+
+
+    free(parent_inode);
+    free(block);
+    free(file_inode);
+    return parent_inode_num;
+}
+/* -------------------------------File Functions------------------------------------*/
+
+int create_file(byte* contents){
+    printf("File Contents: %s\n", (char*)contents);
+    int inode_num = pop_front(inodelist_head);  
+    printf("INODE NUM: %d\n", inode_num);
+    int file_len = strlen((char*)contents);
+    printf("Size of File: %d\n", file_len);
+    int num_blocks = file_len / 512;
+    if (file_len % 512 != 0) {
+        num_blocks++;
+    }
+
+    if (num_blocks > 252) {
+        printf("File size is too big!\n");
+    }
+
+     // Create Inode
+    byte* inode = (byte*)calloc(BLOCK_SIZE, sizeof(byte));
+    //size of file
+    inode[3] = file_len & 0xFF;
+    inode[2] = (file_len >> 8) & 0xFF;
+    inode[1] = (file_len >> 16) & 0xFF;
+    inode[0] = (file_len >> 24) & 0xFF;
+    //set flag to be directory
+    inode[4] = 0xFF;
+
+
+    byte* block = (byte*)calloc(BLOCK_SIZE, sizeof(byte));
+    byte* free_block_vector = (byte*)calloc(BLOCK_SIZE, sizeof(byte));
+    readBlock(1, free_block_vector);
+    for (int i = 0; i < num_blocks; i++) {
+        int block_num = pop_front(blocklist_head);
+        printf("Block Num: %d\n", block_num);
+        //write file to block(s)
+        if (file_len < 512) {
+            memcpy(block, contents, file_len);
+        } else {
+            memcpy(block, contents, 512);
+            file_len = file_len - 512;
+        }
+
+        //write block number to inode
+        inode[9] = block_num & 0xFF;
+        inode[8] = (block_num >> 8) & 0xFF;
+
+        //write block to disk
+        writeBlock(block_num, block);
+        //set free-block vector
+        set_block(free_block_vector, block_num);
+    }
+    //write inode to disk
+    writeBlock((inode_num+2), inode);
+    writeBlock(1, free_block_vector);
+
+    // mark inode as unavailable
+    byte* free_inode_vector = (byte*)calloc(BLOCK_SIZE, sizeof(byte));
+    readBlock(2, free_inode_vector);
+    free_inode_vector[inode_num] = 0xFF;
+    writeBlock(2, free_inode_vector);
+
+    free(free_inode_vector);
+    free(free_block_vector);
+    free(block);
+    free(inode);
+
+    return inode_num;
+}
+
+void delete_file(int inode_num){
+    byte* inode = (byte*)calloc(BLOCK_SIZE, sizeof(byte));
+    readBlock((inode_num + 2), inode);
+
+    for (int i = 8; i < 512; i += 2){
+        int block_num = 256 * (int)inode[i] + (int)inode[i+1];
+        if (block_num != 0){
+            reclaim_block(block_num);
+        }
+    }
+    reclaim_inode(inode_num);
+    free(inode);
+}
+
+/* -------------------------------Reclaim Functions---------------------------------*/
+
+// clears block and makes it available
+void reclaim_block(int block_num){
+    //write over block with 0's
+    byte* block = (byte*)calloc(BLOCK_SIZE, sizeof(byte));
+    writeBlock(block_num, block);
+
+    //update free block vector
+    byte* free_block_vector = (byte*)calloc(BLOCK_SIZE, sizeof(byte));
+    readBlock(1, free_block_vector);
+    unset_block(free_block_vector, block_num);
+    writeBlock(1, free_block_vector);
+
+    //update free block list
+    printf("Adding %d back to block list.\n", block_num);
+    push_back(blocklist_head, block_num);
+
+    free(block);
+    free(free_block_vector);
+
+}
+
+// clears inode and makes it available
+void reclaim_inode(int inode_num){
+    //write over block with 0's
+    byte* inode = (byte*)calloc(BLOCK_SIZE, sizeof(byte));
+    writeBlock((inode_num + 2), inode);
+
+    //update free inode vector
+    byte* free_inode_vector = (byte*)calloc(BLOCK_SIZE, sizeof(byte));
+    readBlock(2, free_inode_vector);
+    free_inode_vector[inode_num] = 0x00;
+    writeBlock(2, free_inode_vector);
+
+    //update free inode list
+    printf("Adding %d back to inode list.\n", inode_num);
+    push_back(inodelist_head, inode_num);
+    free(inode);
+    free(free_inode_vector);
+}
+
+
+
+
