@@ -11,8 +11,12 @@ make ./testdir > /dev/null
 make ./testfiles > /dev/null
 make ./addfile > /dev/null
 make ./removefile > /dev/null
+make ./testargs > /dev/null
 
-./addfile
-hexdump -C ../disk/vdisk
-./removefile
-hexdump -C ../disk/vdisk
+# For testing add and remove files
+#./addfile
+#hexdump -C ../disk/vdisk
+#./removefile
+#hexdump -C ../disk/vdisk
+
+./testargs

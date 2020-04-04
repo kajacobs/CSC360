@@ -33,9 +33,20 @@ int get_block(byte* block, int block_num);
 int create_directory();
 void add_file_to_directory(int parent_inode_num, int child_node_num, char* filename);
 int delete_file_from_directory(int parent_inode_num, char* filename);
+int search_directory(int parent_inode_num, char* filename);
 int create_file();
 void delete_file(int inode_num);
 void reclaim_block(int block_num);
 void reclaim_inode(int inode_num);
+
+//User Input
+void parse_arguments(char* user_input);
+char **split_line(char* line);
+void execute_command(char **args);
+void open(char **args);
+void make_dir(char **args);
+void remove_file(char **args);
+void make_file(char **args);
+
 
 #endif

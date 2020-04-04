@@ -7,6 +7,8 @@
 
 
 typedef unsigned char byte;
+//#define DELIM "\t\r\n\a /"
+#define BUFSIZE 64
 
 struct node {
     int number;
@@ -45,14 +47,22 @@ int get_block(byte* block, int block_num);
 int create_directory();
 void add_file_to_directory(int parent_inode_num, int child_node_num, char* filename);
 int delete_file_from_directory(int parent_inode_num, char* filename);
+int search_directory(int parent_inode_num, char* filename);
 int create_file();
 void delete_file(int inode_num);
 void reclaim_block(int block_num);
 void reclaim_inode(int inode_num);
 
+//User Input
+void parse_arguments(char* user_input);
+char **split_line(char* line);
+void execute_command(char **args);
+void open(char **args);
+void make_dir(char **args);
+void remove_file(char **args);
+void make_file(char **args);
+
 // To DO (back end)
-void closeLLFS();
-void delete_directory();
 void add_to_file();
 void write_inode();
 void write_block();
@@ -468,6 +478,40 @@ int delete_file_from_directory(int parent_inode_num, char* filename) {
     free(file_inode);
     return parent_inode_num;
 }
+
+//searches from root directory for a directory/file name 
+// if found, returns inode number, else returns -1
+int search_directory(int parent_inode_num, char* filename){
+    byte* parent_inode = (byte*)calloc(BLOCK_SIZE, sizeof(byte));
+    readBlock((parent_inode_num + 2), parent_inode);
+
+    int filname_len = strlen(filename);
+    int file_inode_num = 0;
+
+    byte* block = (byte*)calloc(BLOCK_SIZE, sizeof(byte));
+    // Loop through each non-empty reference block # in the inode for filename
+    for (int i = 8; i < BLOCK_SIZE; i += 2) {
+        int blocknum = (int)parent_inode[i]*256 + (int)parent_inode[i+1];
+        if (blocknum != 0){
+            readBlock(blocknum, block);
+            // Loop through each block to find filename
+            for (int j = 1; j < BLOCK_SIZE; j += 32){
+                if (strncmp(filename, (char*)block + j, filname_len) == 0){
+                    file_inode_num = block[j-1];
+                }
+            }
+        }
+    }
+
+    free(parent_inode);
+    free(block);
+    
+    if (file_inode_num == 0){
+        return -1;
+    }
+     
+    return file_inode_num;
+}
 /* -------------------------------File Functions------------------------------------*/
 
 int create_file(byte* contents){
@@ -593,6 +637,91 @@ void reclaim_inode(int inode_num){
     free(free_inode_vector);
 }
 
+/* -------------------------------User Input Functions---------------------------------*/
 
 
+void parse_arguments(char* user_input){
+    char **args = split_line(user_input);
+    execute_command(args);
+}
 
+//splits line into an array
+// This function was taken from my shell assignment
+char **split_line(char* line){
+    int bufsize = BUFSIZE, position = 0;
+    char **tokens = malloc(bufsize * sizeof(char*));
+    char *token;
+
+    if (!tokens){
+        fprintf(stderr, "Allocation error\n");
+        exit(EXIT_FAILURE);
+    }
+
+    const char* delim = " /";
+    token = strtok(line, delim);
+    while(token != NULL){
+        tokens[position] = token;
+        position++;
+
+        if (position >= bufsize){
+            bufsize += BUFSIZE;
+            tokens = realloc(tokens, bufsize * sizeof(char*));
+            if (!tokens){
+                fprintf(stderr, "Allocation error\n");
+                exit(EXIT_FAILURE);
+            }
+        }
+        token = strtok(NULL, delim);
+    } // end of while loop
+    tokens[position] = NULL;
+    return tokens;
+} 
+
+// takes the tokenized commands from the split_line functions and executes the correct 
+// file system function
+// This function was taken from my shell assignment
+void execute_command(char **args){
+    if (args == NULL){
+        fprintf(stderr, "Error: NULL arguments\n");
+        exit(1);
+    } else if (args[0] == NULL) {
+        fprintf(stderr, "Error: NULL arguments\n");
+        exit(1);
+    }
+
+    size_t cmd_len = strlen(args[0]);
+
+    if (strncmp(args[0], "open", cmd_len) == 0) open(args);
+    if (strncmp(args[0], "mkdir", cmd_len) == 0) make_dir(args);
+    if (strncmp(args[0], "rm", cmd_len) == 0) remove_file(args);
+    if (strncmp(args[0], "touch", cmd_len) == 0) make_file(args);
+
+}
+
+// opens a file
+void open(char **args){
+
+}
+
+// makes a directory
+void make_dir(char **args){
+    int inode_num = 1;
+    for (int i = 1; args[i] != NULL; i++){
+        inode_num = search_directory(inode_num, args[i]);
+        if (inode_num == -1){
+            printf("Dir/File does not exist. Now I makes it precious\n");
+        } 
+    }
+    // create file or directory
+
+}
+
+// removes a file, or an empty directory
+void remove_file(char **args){
+
+}
+
+// creates a file
+void make_file(char **args){
+
+}
