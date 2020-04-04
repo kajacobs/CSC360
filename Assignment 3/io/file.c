@@ -227,7 +227,6 @@ void initLLFS(){
 
 }
 
-
 // opens LLFS
 void startLLFS(){
     create_free_blocklist();
