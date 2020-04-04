@@ -292,6 +292,7 @@ void create_free_blocklist(){
              push_back(blocklist_head, i);
         }
     }
+    free(block);
 }
 
  // creates a list of all free inodes at program start time
@@ -306,6 +307,7 @@ void create_free_inodelist(){
             push_back(inodelist_head, i);
         }
     }
+    free(block);
 }
 
 /* -------------------------Bit vector functions ---------------------------------*/
@@ -369,6 +371,7 @@ int create_directory(){
     set_block(free_block_vector, block_num);
     writeBlock(1, free_block_vector);
     free(free_block_vector);
+    free(inode);
 
     return inode_num;
 }
@@ -641,6 +644,7 @@ void reclaim_inode(int inode_num){
 void parse_arguments(char* user_input){
     char **args = split_line(user_input);
     execute_command(args);
+    free(args);
 }
 
 //splits line into an array
@@ -790,5 +794,6 @@ void make_file(char **args){
     fread(contents, 1, size_of_file, f);
     int file_inode_num = create_file((byte*)contents);
     add_file_to_directory(parent_inode_num, file_inode_num, args[i]);
+    free(contents);
 
 }

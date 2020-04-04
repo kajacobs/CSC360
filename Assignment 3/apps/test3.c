@@ -4,11 +4,11 @@
 #include "../io/file.h"
 
 int main(){ 
-    startLLFS();
+    initLLFS();
     char args[] = "addfile /myfile";
     parse_arguments(args);
-    char args2[] = "rm /myfile myfile.txt";
-    parse_arguments(args2);
+   // char args2[] = "rm /myfile myfile.txt";
+   // parse_arguments(args2);
     closeLLFS();
     return 1;
 }
