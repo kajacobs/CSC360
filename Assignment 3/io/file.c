@@ -175,12 +175,14 @@ void  clear(struct node** listHead) {
 }
 
 void print(struct node** listHead) {
+    if (listHead == NULL) return;
     struct node* ref = *listHead;
     ref = begin(ref);
     if (ref == NULL) return;
-    do {
-        printf("%d ",ref->number);
-    } while((ref = next(ref)) != NULL);
+    while (ref != NULL) {
+	printf("%d ",ref->number);
+	ref = next(ref);
+    }
     printf("\n");
 }
 
@@ -240,6 +242,8 @@ void closeLLFS(){
 
     free(blocklist_head);
     free(inodelist_head);
+    blocklist_head = NULL;
+    inodelist_head = NULL;
 }
 
 /*-------------------Init Free block and inode bit vectors-----------------------*/

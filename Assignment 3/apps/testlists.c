@@ -31,6 +31,7 @@ int main(){
     closeLLFS();
     printf("BlockList: \n");
     print(blocklist_head);
+    printf("No?\n");
     printf("Inode List: \n");
     print(inodelist_head);
     
