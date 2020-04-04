@@ -57,7 +57,7 @@ void reclaim_inode(int inode_num);
 void parse_arguments(char* user_input);
 char **split_line(char* line);
 void execute_command(char **args);
-void open(char **args);
+void read_file(char **args);
 void make_dir(char **args);
 void remove_file(char **args);
 void make_file(char **args);
@@ -414,13 +414,13 @@ int delete_file_from_directory(int parent_inode_num, char* filename) {
     byte* parent_inode = (byte*)calloc(BLOCK_SIZE, sizeof(byte));
     readBlock((parent_inode_num + 2), parent_inode);
 
+
     int filname_len = strlen(filename);
     int file_inode_num = 0;
 
     // The i and j that lead to the reference of the file to be removed
     int persistent_i = 0;
     int persistent_j = 0;
-
 
     byte* block = (byte*)calloc(BLOCK_SIZE, sizeof(byte));
     // Loop through each non-empty reference block # in the inode for filename
@@ -449,9 +449,8 @@ int delete_file_from_directory(int parent_inode_num, char* filename) {
     if (file_inode[4] == 0xFF){
         delete_file(file_inode_num);
     } else if (file_inode[4] == 0xDD){
-         printf("8\n");
         int size = ((int)file_inode[3]) + 256*((int)file_inode[2]) + 256*256*((int)file_inode[1]);
-        if (size != 32){
+        if (size != 64){
             printf("Directory is not empty, cannot be deleted.\n");
         } else {
             delete_file(file_inode_num);
@@ -482,7 +481,7 @@ int delete_file_from_directory(int parent_inode_num, char* filename) {
     return parent_inode_num;
 }
 
-//searches from root directory for a directory/file name 
+//searches from directory for a directory/file name 
 // if found, returns inode number, else returns -1
 int search_directory(int parent_inode_num, char* filename){
     byte* parent_inode = (byte*)calloc(BLOCK_SIZE, sizeof(byte));
@@ -518,14 +517,11 @@ int search_directory(int parent_inode_num, char* filename){
 /* -------------------------------File Functions------------------------------------*/
 
 int create_file(byte* contents){
-    printf("File Contents: %s\n", (char*)contents);
     int inode_num = pop_front(inodelist_head);  
-    printf("INODE NUM: %d\n", inode_num);
     int file_len = strlen((char*)contents);
-    printf("Size of File: %d\n", file_len);
-    int num_blocks = file_len / 512;
-    if (file_len % 512 != 0) {
-        num_blocks++;
+    int num_blocks = (file_len / 512) + 1;
+    if (file_len % 512 == 0) {
+        num_blocks--;
     }
 
     if (num_blocks > 252) {
@@ -548,23 +544,24 @@ int create_file(byte* contents){
     readBlock(1, free_block_vector);
     for (int i = 0; i < num_blocks; i++) {
         int block_num = pop_front(blocklist_head);
-        printf("Block Num: %d\n", block_num);
         //write file to block(s)
         if (file_len < 512) {
-            memcpy(block, contents, file_len);
+            memcpy(block, contents + (i*512), file_len);
         } else {
-            memcpy(block, contents, 512);
+            memcpy(block, contents + (i*512), 512);
             file_len = file_len - 512;
         }
 
         //write block number to inode
-        inode[9] = block_num & 0xFF;
-        inode[8] = (block_num >> 8) & 0xFF;
+        inode[2*i+9] = block_num & 0xFF;
+        inode[2*i+8] = (block_num >> 8) & 0xFF;
 
         //write block to disk
         writeBlock(block_num, block);
         //set free-block vector
         set_block(free_block_vector, block_num);
+        free(block);
+        block = (byte*)calloc(BLOCK_SIZE, sizeof(byte));
     }
     //write inode to disk
     writeBlock((inode_num+2), inode);
@@ -613,7 +610,6 @@ void reclaim_block(int block_num){
     writeBlock(1, free_block_vector);
 
     //update free block list
-    printf("Adding %d back to block list.\n", block_num);
     push_back(blocklist_head, block_num);
 
     free(block);
@@ -634,7 +630,6 @@ void reclaim_inode(int inode_num){
     writeBlock(2, free_inode_vector);
 
     //update free inode list
-    printf("Adding %d back to inode list.\n", inode_num);
     push_back(inodelist_head, inode_num);
     free(inode);
     free(free_inode_vector);
@@ -694,37 +689,106 @@ void execute_command(char **args){
 
     size_t cmd_len = strlen(args[0]);
 
-    if (strncmp(args[0], "open", cmd_len) == 0) open(args);
+    if (strncmp(args[0], "read", cmd_len) == 0) read_file(args);
     if (strncmp(args[0], "mkdir", cmd_len) == 0) make_dir(args);
     if (strncmp(args[0], "rm", cmd_len) == 0) remove_file(args);
-    if (strncmp(args[0], "touch", cmd_len) == 0) make_file(args);
+    if (strncmp(args[0], "addfile", cmd_len) == 0) make_file(args);
 
 }
 
 // opens a file
-void open(char **args){
+void read_file(char **args){
+    int child_inode_num = 0;
+    int parent_inode_num = 1;
+    int i = 1;
+    while (args[i] != NULL){
+        child_inode_num = search_directory(parent_inode_num, args[i]);
+        if (args[i+1] != NULL){
+            parent_inode_num = child_inode_num;
+        }
+        i++;
+    } 
+    byte* inode = (byte*)calloc(BLOCK_SIZE, sizeof(byte));
+    readBlock((child_inode_num + 2), inode); 
+    byte* block = (byte*)calloc(BLOCK_SIZE, sizeof(byte));
 
+    for (int i = 8; i < BLOCK_SIZE; i = i + 2){
+        int blocknum = (int)inode[i]*256 + (int)inode[i+1];
+        if (blocknum != 0){
+            readBlock(blocknum, block);
+            // Loop through each block and print contents to std.out
+            printf("%s", (char*)block);
+        }
+    } 
+
+    free(block);
+    free(inode);
 }
 
 // makes a directory
 void make_dir(char **args){
-    int inode_num = 1;
+    int child_inode_num = 0;
+    int parent_inode_num = 1;
     for (int i = 1; args[i] != NULL; i++){
-        inode_num = search_directory(inode_num, args[i]);
-        if (inode_num == -1){
-            printf("Dir/File does not exist. Now I makes it precious\n");
+        child_inode_num = search_directory(parent_inode_num, args[i]);
+        if (child_inode_num == -1){
+            child_inode_num = create_directory();
+            add_file_to_directory(parent_inode_num, child_inode_num, args[i]);
+            add_file_to_directory(child_inode_num, parent_inode_num, "..");
         } 
+        parent_inode_num = child_inode_num;
     }
-    // create file or directory
+
 
 }
 
 // removes a file, or an empty directory
 void remove_file(char **args){
+    int child_inode_num = 0;
+    int parent_inode_num = 1;
+    int i = 1;
+    while (args[i] != NULL){
+        child_inode_num = search_directory(parent_inode_num, args[i]);
+        if (args[i+1] != NULL){
+            parent_inode_num = child_inode_num;
+        }
+        i++;
+    }
+    delete_file_from_directory(parent_inode_num, args[i-1]);
 
 }
 
 // creates a file
 void make_file(char **args){
+    int child_inode_num = 0;
+    int parent_inode_num = 1;
+    int i = 1;
+    while (args[i+2] != NULL){
+        child_inode_num = search_directory(parent_inode_num, args[i]);
+        if (child_inode_num == -1){
+            child_inode_num = create_directory();
+            add_file_to_directory(parent_inode_num, child_inode_num, args[i]);
+            add_file_to_directory(child_inode_num, parent_inode_num, "..");
+        } 
+        parent_inode_num = child_inode_num;
+        i++;
+    }
+
+    FILE* f;
+    f = fopen(args[i+1], "rb");
+    if (f == NULL){
+        printf("File not found\n");
+        exit(1);
+    }
+    //https://stackoverflow.com/questions/238603/how-can-i-get-a-files-size-in-c
+    fseek(f, 0L, SEEK_END);
+    size_t size_of_file = ftell(f);
+    size_of_file = size_of_file + 1;
+    rewind(f); 
+    char* contents = (char*)calloc(size_of_file, sizeof(char));
+
+    fread(contents, 1, size_of_file, f);
+    int file_inode_num = create_file((byte*)contents);
+    add_file_to_directory(parent_inode_num, file_inode_num, args[i]);
 
 }

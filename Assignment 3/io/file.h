@@ -43,7 +43,7 @@ void reclaim_inode(int inode_num);
 void parse_arguments(char* user_input);
 char **split_line(char* line);
 void execute_command(char **args);
-void open(char **args);
+void read_file(char **args);
 void make_dir(char **args);
 void remove_file(char **args);
 void make_file(char **args);

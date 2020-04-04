@@ -4,9 +4,9 @@
 #include "../io/file.h"
 
 int main(){
-    printf("Testing Split Args\n");
-    char args[] = "mkdir /yeet/yote/yate/mahdog";
-    initLLFS();
+    printf("Testing Read File\n");
+    char args[] = "read /yeet/yote/myfile";
+    startLLFS();
     parse_arguments(args);
     return 1;
 }
