@@ -4,7 +4,7 @@
 Please see report.txt for a description of the design and implementation of my file system.
 
 #### How to Run my File System
-I have a shell script that compiles all the necessary files and runs all of my tests. The command ./runLLFS.sh should be all you need to run my file system :)
+I have a shell script that compiles all the necessary files and runs all of my tests. The command ./runLLFS.sh in the top level folder that contains the script should be all you need to run my file system :)
 
 
 #### Resources Used:
