@@ -9,5 +9,13 @@ memory than in hard disks, which most personal computers use.
 For llFS I did not use any indirect blocks and instead used all direct blocks. I also chose my inodes to be a full block in size. This meant each inode had 252 references to direct blocks,and my maximum file size was ~129kB. While this may not be an effective use of space the tradeoff is that my file system is easier to maintain over time. One of the laws of software evolution:
 as an E-type system evolves, it's complexity increases over time unless work is done to maintain or reduce it. (https://en.wikipedia.org/wiki/Lehman%27s_laws_of_software_evolution)
 
+The following commands that I have implemented are:
+- addfile 'path' 'filename'
+- mkdir 'path'
+- read 'path'
+-rm 'path'
+
+The way my filesystem is implemented I am actually able to create multiple directories at the same time. For instance if I type "mkdir /Documents/CSC360/Assignments" My code will check for Documents in the root directory, if it doesn't exist will create it and add it to the root directory, then check the direcotry Documents for CSC360, so on. My design implementation also allows the command 'rm' delete either a file or directory, so long that the directory is empty. 
+
 
 I would also like to mention that for this assignment I spent some time speaking with my fiance on a high level about the assignment in terms of design choices. His name is Matthew Fortier, V#00701675. I mention this because he has previously taken the course, and my design choices may be similar to his. I spent a fair amount of time talking to him about my design because of the school closing down, and I find it really helpful to discuss assignments outloud and draw things out. However I want to make it extremely clear I have not seen his code for this assignment, the only code I directly received some help with was my Makefile when I was first getting the assignment started. 
