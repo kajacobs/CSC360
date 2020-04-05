@@ -20,3 +20,5 @@ I used the resource below to find the size of a given file
 I slightly modified and used some of the following functions from my shell assignment:
 - char **split_line(char* line);
 - void execute_command(char **args);
+
+My functions readBlock() and writeBlock() in disk.c were taken from tutorial.
