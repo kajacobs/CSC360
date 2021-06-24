@@ -1,2 +1,2 @@
-# CSC360
-This repo contains the code for my CSC 360 Assignments. Some credit goes to my instructor Yvonne Cody for providing base code that I built my assignments upon. 
+# CSC360: Operating Systems
+This repo contains my code for the course CSC 360: Operating Systems. Some code is credited to my instructor Yvonne Cody who provided base code which my assignment is built upon. 
