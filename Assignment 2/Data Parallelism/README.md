@@ -9,7 +9,8 @@ I have created a shell script to run my tests, which is included as test.sh. Add
 
 Resources Used:
 
--Programming assignment spec
+- Programming assignment spec
+- Data set that was provided with assignment
 
 
 https://dspace.library.uvic.ca/bitstream/handle/1828/11460/Computing%20L1%20Straight-Line%20Fits%20to%20Data%20%28Part%201%29.pdf?sequence=1&isAllowed=y (Ian Barrodales Paper)
